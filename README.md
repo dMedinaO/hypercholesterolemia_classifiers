@@ -26,8 +26,16 @@ The steps associated to the work implies:
 
 1. Preprocessing dataset
 
+Please, check the jupyter notebooks in the folder [src/preparing_data](src/preparing_data):
+
 2. Describing dataset
+
+Please, check the jupyter notebooks in the folder [src/descriptive_process](src/descriptive_process):
 
 3. Training classification models
 
+Please, check the jupyter notebooks in the folder [src/training_model](src/training_model):
+
 4. Explain classification models
+
+Please, check the jupyter notebooks in the folder [src/explain_models](src/explain_models):
