@@ -1,4 +1,4 @@
-Age,Weight,Height,Clycemia,SBP,DBP,Cholesterol,Triglycerides,HDL,LDL,MSPH,BMI
+Age,Weight,Height,Glycemia,SBP,DBP,Cholesterol,Triglycerides,HDL,LDL,MSPH,BMI
 21,63.0,158.0,70.0,96.0,64.0,140,75.0,61.0,64.0,0,25.2
 20,112.0,164.0,77.0,80.0,60.0,126,81.0,36.0,74.0,0,41.6
 19,77.8,165.0,93.0,102.0,64.0,149,105.0,56.0,73.0,0,28.6
