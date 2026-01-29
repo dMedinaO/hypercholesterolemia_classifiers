@@ -1,0 +1,25 @@
+{
+  "run_tag": "20260129_091325",
+  "raw_path": "../../data/raw_data/raw_data.xlsx",
+  "raw_sha256": "34e75e75253dc896f736050ee627730beb9a9f2f33c0ffcf8bb8f10f25ecc38e",
+  "raw_size_mb": 0.05721569061279297,
+  "sheets": [
+    "cohorte_and",
+    "cohorte_rs"
+  ],
+  "shapes": {
+    "cohorte_and": [
+      83,
+      16
+    ],
+    "cohorte_rs": [
+      77,
+      19
+    ]
+  },
+  "outputs": {
+    "schema_missingness": "../../data/audit/20260129_091325_schema_missingness.csv",
+    "numeric_describe": "../../data/audit/20260129_091325_numeric_describe.csv",
+    "sanity_violations": "../../data/audit/20260129_091325_sanity_range_violations.csv"
+  }
+}
