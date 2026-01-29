@@ -1,0 +1,5 @@
+step,n_rows,n_pos,n_neg,pct_pos
+01_concat_raw_sheets,160,44,116,27.500000000000004
+02_after_label_definition,160,44,116,27.500000000000004
+03_after_bmi_qc,160,44,116,27.500000000000004
+04_strict_complete_cases_for_model,148,42,106,28.37837837837838
