@@ -1,0 +1,32 @@
+{
+  "run_id": "20260129_180728",
+  "timestamp": "2026-01-29T18:07:33.784079",
+  "python": "3.12.12 | packaged by Anaconda, Inc. | (main, Oct 21 2025, 20:16:04) [GCC 11.2.0]",
+  "platform": "Linux-6.8.0-90-generic-x86_64-with-glibc2.39",
+  "imblearn_available": true,
+  "data_path": "/home/david/Desktop/colabs/serra_ramon/hypercholesterolemia_classifiers/data/processed_variants/hcs_strict_complete_case_20260129_114259.csv",
+  "config_path": "/home/david/Desktop/colabs/serra_ramon/hypercholesterolemia_classifiers/configs/variants/config_kfold.json",
+  "n_rows": 148,
+  "pos_rate": 0.28378378378378377,
+  "target": "MSPH",
+  "predictors": [
+    "Age",
+    "Weight",
+    "Height",
+    "BMI_final",
+    "Glycemia",
+    "SBP_1T",
+    "DBP_1T",
+    "TC_1T",
+    "TG_1T",
+    "HDL_1T",
+    "LDL_1T"
+  ],
+  "n_combos_attempted": 20,
+  "n_result_rows": 100,
+  "outputs": {
+    "results_csv": "runs/STRICT/config_kfold/run_20260129_180728/results.csv",
+    "summary_csv": "runs/STRICT/config_kfold/run_20260129_180728/summary.csv",
+    "predictions_parquet": "runs/STRICT/config_kfold/run_20260129_180728/predictions.parquet"
+  }
+}
