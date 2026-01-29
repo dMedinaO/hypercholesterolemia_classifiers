@@ -1,0 +1,6 @@
+step,n_rows,n_pos,n_neg,pct_pos,n_missing_predictors_total
+01_concat_raw_sheets,160,44,116,27.500000000000004,21
+02_after_label_definition,160,44,116,27.500000000000004,21
+03_after_bmi_qc,160,44,116,27.500000000000004,21
+04_preclean_target_defined,160,44,116,27.500000000000004,21
+05_strict_complete_case_preview,148,42,106,28.37837837837838,0

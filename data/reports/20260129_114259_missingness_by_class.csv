@@ -1,0 +1,12 @@
+column,pct_null_group_0,pct_null_group_1,abs_diff_pct_points,pretty,unit
+Age,0.0,0.0,0.0,Age (years),years
+BMI_final,1.7241379310344827,0.0,1.72,Body mass index (kg/m²),kg/m²
+DBP_1T,2.586206896551724,2.272727272727273,0.31,"Diastolic blood pressure (1st trimester, mmHg)",mmHg
+Glycemia,6.0344827586206895,2.272727272727273,3.76,Fasting glycemia (mg/dL),mg/dL
+HDL_1T,0.0,0.0,0.0,"HDL cholesterol (1st trimester, mg/dL)",mg/dL
+Height,1.7241379310344827,0.0,1.72,Height (cm),cm
+LDL_1T,0.0,0.0,0.0,"LDL cholesterol (1st trimester, mg/dL)",mg/dL
+SBP_1T,2.586206896551724,2.272727272727273,0.31,"Systolic blood pressure (1st trimester, mmHg)",mmHg
+TC_1T,0.0,0.0,0.0,"Total cholesterol (1st trimester, mg/dL)",mg/dL
+TG_1T,0.0,0.0,0.0,"Triglycerides (1st trimester, mg/dL)",mg/dL
+Weight,0.8620689655172413,0.0,0.86,Weight (kg),kg

@@ -1,0 +1,12 @@
+feature,pretty,missing_%_MSPH1,missing_%_MSPH0,diff_pct_points,risk_ratio,unit
+Age,Age (years),0.0,0.0,0.0,,years
+HDL_1T,"HDL cholesterol (1st trimester, mg/dL)",0.0,0.0,0.0,,mg/dL
+LDL_1T,"LDL cholesterol (1st trimester, mg/dL)",0.0,0.0,0.0,,mg/dL
+TG_1T,"Triglycerides (1st trimester, mg/dL)",0.0,0.0,0.0,,mg/dL
+TC_1T,"Total cholesterol (1st trimester, mg/dL)",0.0,0.0,0.0,,mg/dL
+SBP_1T,"Systolic blood pressure (1st trimester, mmHg)",2.27,2.59,-0.31,0.879,mmHg
+DBP_1T,"Diastolic blood pressure (1st trimester, mmHg)",2.27,2.59,-0.31,0.879,mmHg
+Weight,Weight (kg),0.0,0.86,-0.86,0.0,kg
+Height,Height (cm),0.0,1.72,-1.72,0.0,cm
+BMI_final,Body mass index (kg/m²),0.0,1.72,-1.72,0.0,kg/m²
+Glycemia,Fasting glycemia (mg/dL),2.27,6.03,-3.76,0.377,mg/dL

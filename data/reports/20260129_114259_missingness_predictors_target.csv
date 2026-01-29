@@ -1,0 +1,13 @@
+column,dtype,n_null,pct_null,n_unique,pretty,unit,role
+Glycemia,float64,8,5.0,96,Fasting glycemia (mg/dL),mg/dL,predictor
+SBP_1T,float64,4,2.5,38,"Systolic blood pressure (1st trimester, mmHg)",mmHg,predictor
+DBP_1T,float64,4,2.5,38,"Diastolic blood pressure (1st trimester, mmHg)",mmHg,predictor
+Height,float64,2,1.25,30,Height (cm),cm,predictor
+BMI_final,float64,2,1.25,93,Body mass index (kg/m²),kg/m²,predictor
+Weight,float64,1,0.62,52,Weight (kg),kg,predictor
+Age,int64,0,0.0,26,Age (years),years,predictor
+TC_1T,int64,0,0.0,83,"Total cholesterol (1st trimester, mg/dL)",mg/dL,predictor
+TG_1T,float64,0,0.0,109,"Triglycerides (1st trimester, mg/dL)",mg/dL,predictor
+HDL_1T,float64,0,0.0,106,"HDL cholesterol (1st trimester, mg/dL)",mg/dL,predictor
+LDL_1T,float64,0,0.0,130,"LDL cholesterol (1st trimester, mg/dL)",mg/dL,predictor
+MSPH,int64,0,0.0,2,Maternal supraphysiological hypercholesterolemia (MSPH),,target

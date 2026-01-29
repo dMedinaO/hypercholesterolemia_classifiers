@@ -1,0 +1,91 @@
+{
+  "run_tag": "20260129_114259",
+  "input": {
+    "pre_clean_dataset": "../../data/processed/hcs_early_only_preclean_20260129_111749.csv",
+    "metadata_json": "../../data/metadata/hcs_dataset_metadata_20260129_111749.json"
+  },
+  "target": "MSPH",
+  "predictors": [
+    "Age",
+    "Weight",
+    "Height",
+    "BMI_final",
+    "Glycemia",
+    "SBP_1T",
+    "DBP_1T",
+    "TC_1T",
+    "TG_1T",
+    "HDL_1T",
+    "LDL_1T"
+  ],
+  "pretty_columns": {
+    "Age": "Age (years)",
+    "Weight": "Weight (kg)",
+    "Height": "Height (cm)",
+    "BMI_final": "Body mass index (kg/m\u00b2)",
+    "Glycemia": "Fasting glycemia (mg/dL)",
+    "SBP_1T": "Systolic blood pressure (1st trimester, mmHg)",
+    "DBP_1T": "Diastolic blood pressure (1st trimester, mmHg)",
+    "TC_1T": "Total cholesterol (1st trimester, mg/dL)",
+    "TG_1T": "Triglycerides (1st trimester, mg/dL)",
+    "HDL_1T": "HDL cholesterol (1st trimester, mg/dL)",
+    "LDL_1T": "LDL cholesterol (1st trimester, mg/dL)",
+    "MSPH": "Maternal supraphysiological hypercholesterolemia (MSPH)"
+  },
+  "units": {
+    "Age": "years",
+    "Weight": "kg",
+    "Height": "cm",
+    "BMI_final": "kg/m\u00b2",
+    "Glycemia": "mg/dL",
+    "SBP_1T": "mmHg",
+    "DBP_1T": "mmHg",
+    "TC_1T": "mg/dL",
+    "TG_1T": "mg/dL",
+    "HDL_1T": "mg/dL",
+    "LDL_1T": "mg/dL"
+  },
+  "roles": {
+    "row_id": "identifier",
+    "_sheet": "identifier_source",
+    "LocalID": "identifier_local",
+    "Age": "predictor",
+    "Weight": "predictor",
+    "Height": "predictor",
+    "BMI_final": "predictor",
+    "Glycemia": "predictor",
+    "SBP_1T": "predictor",
+    "DBP_1T": "predictor",
+    "TC_1T": "predictor",
+    "TG_1T": "predictor",
+    "HDL_1T": "predictor",
+    "LDL_1T": "predictor",
+    "MSPH": "target"
+  },
+  "missingness_reports": {
+    "all_columns": "../../data/reports/20260129_114259_missingness_all_columns.csv",
+    "predictors_target": "../../data/reports/20260129_114259_missingness_predictors_target.csv",
+    "by_class": "../../data/reports/20260129_114259_missingness_by_class.csv",
+    "dependency_simple": "../../data/reports/20260129_114259_missingness_dependency_simple.csv"
+  },
+  "variants": {
+    "strict_complete_case": "../../data/processed_variants/hcs_strict_complete_case_20260129_114259.csv",
+    "imputed_exploratory": "../../data/processed_variants/hcs_imputed_exploratory_20260129_114259.csv"
+  },
+  "counts": {
+    "preclean_n": 160,
+    "preclean_pos": 44,
+    "preclean_neg": 116,
+    "strict_n": 148,
+    "strict_pos": 42,
+    "strict_neg": 106,
+    "imputed_n": 160,
+    "imputed_pos": 44,
+    "imputed_neg": 116
+  },
+  "notes": [
+    "STRICT is complete-case baseline.",
+    "IMPUTED is exploratory; proper imputation should be done within CV folds to avoid leakage.",
+    "This notebook quantifies missingness and whether it differs by MSPH status."
+  ]
+}

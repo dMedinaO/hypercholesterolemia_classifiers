@@ -1,5 +1,6 @@
 {
-  "run_tag": "20260129_104323",
+  "run_tag": "20260129_111749",
+  "stage": "pre-clean (missing predictors preserved; target defined)",
   "raw_path": "../../data/raw_data/raw_data.xlsx",
   "raw_sha256": "34e75e75253dc896f736050ee627730beb9a9f2f33c0ffcf8bb8f10f25ecc38e",
   "sheets_used": [
@@ -50,17 +51,17 @@
     "ldl3": "LDL_3T"
   },
   "pretty_columns": {
-    "Age": "Age",
-    "Weight": "Weight",
-    "Height": "Height",
-    "BMI": "BMI",
-    "Glycemia": "Glycemia",
-    "SBP_1T": "Systolic blood pressure (1st trimester)",
-    "DBP_1T": "Diastolic blood pressure (1st trimester)",
-    "TC_1T": "Total cholesterol (1st trimester)",
-    "TG_1T": "Triglycerides (1st trimester)",
-    "HDL_1T": "HDL (1st trimester)",
-    "LDL_1T": "LDL (1st trimester)",
+    "Age": "Age (years)",
+    "Weight": "Weight (kg)",
+    "Height": "Height (cm)",
+    "BMI_final": "Body mass index (kg/m\u00b2)",
+    "Glycemia": "Fasting glycemia (mg/dL)",
+    "SBP_1T": "Systolic blood pressure (1st trimester, mmHg)",
+    "DBP_1T": "Diastolic blood pressure (1st trimester, mmHg)",
+    "TC_1T": "Total cholesterol (1st trimester, mg/dL)",
+    "TG_1T": "Triglycerides (1st trimester, mg/dL)",
+    "HDL_1T": "HDL cholesterol (1st trimester, mg/dL)",
+    "LDL_1T": "LDL cholesterol (1st trimester, mg/dL)",
     "MSPH": "Maternal supraphysiological hypercholesterolemia (MSPH)"
   },
   "units": {
@@ -78,6 +79,7 @@
   },
   "column_roles": {
     "row_id": "identifier",
+    "_sheet": "identifier_source",
     "LocalID": "identifier_local",
     "Age": "predictor",
     "Weight": "predictor",
@@ -96,14 +98,15 @@
     "height_unit_guess": "cm",
     "rule_flag": "abs(BMI - BMI_calc) > 1.0 OR BMI_calc outside [10,80] OR BMI missing",
     "final_bmi_column": "BMI_final",
-    "bmi_report_csv": "../../data/metadata/hcs_bmi_qc_20260129_104323.csv"
+    "bmi_report_csv": "../../data/metadata/hcs_bmi_qc_20260129_111749.csv"
   },
   "target": {
     "name": "MSPH",
     "rule": "ct3 > 290",
     "threshold": 290,
     "positive_definition": "MSPH = 1",
-    "negative_definition": "MSPH = 0"
+    "negative_definition": "MSPH = 0",
+    "note": "TC_3T is used only to define the label and is excluded from predictors."
   },
   "predictors": [
     "Age",
@@ -124,15 +127,16 @@
     "HDL_3T",
     "LDL_3T"
   ],
-  "final_counts": {
-    "n_rows": 148,
-    "n_pos": 42,
-    "n_neg": 106,
-    "pct_pos": 28.37837837837838
+  "counts": {
+    "preclean_n": 160,
+    "preclean_pos": 44,
+    "preclean_neg": 116,
+    "preclean_pct_pos": 27.500000000000004,
+    "strict_complete_case_preview_n": 148
   },
   "notes": [
-    "Third trimester variables are excluded from predictors; ct3 is used only to define the outcome label.",
-    "LocalID may repeat across sheets; row_id is used for stable bookkeeping.",
-    "Pretty column names are provided for figures and tables; code uses snake/camel case identifiers."
+    "This notebook exports a PRE-CLEAN dataset for missingness analysis in Notebook 03.",
+    "Imputation and/or complete-case selection for modeling are performed downstream to avoid leakage.",
+    "LocalID may repeat across sheets; row_id is used for stable bookkeeping."
   ]
 }
