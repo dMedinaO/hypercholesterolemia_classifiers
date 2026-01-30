@@ -1,0 +1,12 @@
+dataset,feature,missing,missing_pct
+strict,Age,0,0.0
+strict,Weight,0,0.0
+strict,Height,0,0.0
+strict,BMI_final,0,0.0
+strict,Glycemia,0,0.0
+strict,SBP_1T,0,0.0
+strict,DBP_1T,0,0.0
+strict,TC_1T,0,0.0
+strict,TG_1T,0,0.0
+strict,HDL_1T,0,0.0
+strict,LDL_1T,0,0.0

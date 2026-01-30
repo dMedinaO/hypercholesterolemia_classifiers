@@ -1,0 +1,12 @@
+dataset,feature,missing,missing_pct
+imputed,Age,0,0.0
+imputed,Weight,0,0.0
+imputed,Height,0,0.0
+imputed,BMI_final,0,0.0
+imputed,Glycemia,0,0.0
+imputed,SBP_1T,0,0.0
+imputed,DBP_1T,0,0.0
+imputed,TC_1T,0,0.0
+imputed,TG_1T,0,0.0
+imputed,HDL_1T,0,0.0
+imputed,LDL_1T,0,0.0
