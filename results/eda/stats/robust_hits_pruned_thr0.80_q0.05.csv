@@ -1,0 +1,2 @@
+feature,analysis_set,effect_strict,effect_imputed,effect_mean,q_strict,q_imputed,max_q,test,effect_name,n_strict,n_imputed,abs_effect_mean
+TC_1T,pruned_thr0.80,-0.5604222821203954,-0.5658307210031348,-0.563126501561765,1.0130558549124394e-06,3.094160629415858e-07,1.0130558549124394e-06,mannwhitneyu,cliffs_delta,148,160,0.563126501561765

@@ -1,0 +1,8 @@
+dataset,threshold,block_id,feature,block_size
+imputed,0.4,1,BMI_final,3
+imputed,0.4,1,TG_1T,3
+imputed,0.4,1,Weight,3
+imputed,0.4,2,LDL_1T,2
+imputed,0.4,2,TC_1T,2
+imputed,0.4,3,DBP_1T,2
+imputed,0.4,3,SBP_1T,2

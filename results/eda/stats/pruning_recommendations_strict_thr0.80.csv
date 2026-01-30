@@ -1,0 +1,3 @@
+dataset,block_id,block_size,keep_feature,drop_feature,keep_missing_pct,keep_variance,drop_missing_pct,drop_variance,strategy,threshold
+strict,1,2,TC_1T,LDL_1T,0.0,821.7622265122264,0.0,673.4855796102224,min_missing_then_max_variance,0.8
+strict,2,2,Weight,BMI_final,0.0,159.61329426365137,0.0,23.264348086485462,min_missing_then_max_variance,0.8

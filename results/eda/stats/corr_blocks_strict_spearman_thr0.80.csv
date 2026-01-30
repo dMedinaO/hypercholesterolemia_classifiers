@@ -1,0 +1,5 @@
+dataset,threshold,block_id,feature,block_size
+strict,0.8,1,LDL_1T,2
+strict,0.8,1,TC_1T,2
+strict,0.8,2,BMI_final,2
+strict,0.8,2,Weight,2

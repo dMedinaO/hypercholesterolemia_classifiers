@@ -1,0 +1,10 @@
+dataset,feature,n,k_groups,test,stat,p_value,effect,effect_name,median_by_group,q_value_fdr
+imputed_pruned_thr0.80,TC_1T,160,2,mannwhitneyu,1108.0,3.437956254906509e-08,-0.5658307210031348,cliffs_delta,"{'0': 172.0, '1': 199.0}",3.094160629415858e-07
+imputed_pruned_thr0.80,SBP_1T,160,2,mannwhitneyu,1904.0,0.012911254204106567,-0.25391849529780564,cliffs_delta,"{'0': 106.0, '1': 110.0}",0.05397231689949086
+imputed_pruned_thr0.80,HDL_1T,160,2,mannwhitneyu,1932.5,0.017990772299830288,-0.24275078369905956,cliffs_delta,"{'0': 55.45, '1': 60.45}",0.05397231689949086
+imputed_pruned_thr0.80,Age,160,2,mannwhitneyu,2087.5,0.07561553181337076,-0.1820141065830721,cliffs_delta,"{'0': 30.0, '1': 31.0}",0.168904161172697
+imputed_pruned_thr0.80,Weight,160,2,mannwhitneyu,2990.5,0.09383564509594278,0.17182601880877743,cliffs_delta,"{'0': 62.0, '1': 60.0}",0.168904161172697
+imputed_pruned_thr0.80,DBP_1T,160,2,mannwhitneyu,2409.5,0.5842195950963356,-0.05583855799373041,cliffs_delta,"{'0': 64.0, '1': 63.5}",0.8031591481513535
+imputed_pruned_thr0.80,Glycemia,160,2,mannwhitneyu,2680.5,0.6246793374510526,0.05035266457680251,cliffs_delta,"{'0': 78.1, '1': 77.55}",0.8031591481513535
+imputed_pruned_thr0.80,Height,160,2,mannwhitneyu,2461.0,0.7291418787211995,-0.03565830721003135,cliffs_delta,"{'0': 161.0, '1': 162.5}",0.8202846135613494
+imputed_pruned_thr0.80,TG_1T,160,2,mannwhitneyu,2595.0,0.8709754708483931,0.016849529780564265,cliffs_delta,"{'0': 99.5, '1': 104.0}",0.8709754708483931
