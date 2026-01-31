@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
+import os
 import platform
 import sys
 from dataclasses import dataclass
@@ -13,41 +15,42 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
-# sklearn
-from sklearn.base import BaseEstimator
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler, RobustScaler, MaxAbsScaler
+from sklearn.base import BaseEstimator, clone
 from sklearn.decomposition import PCA
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import StratifiedKFold, LeaveOneOut, train_test_split
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
-    roc_auc_score,
-    average_precision_score,
-    brier_score_loss,
     accuracy_score,
+    average_precision_score,
     balanced_accuracy_score,
+    brier_score_loss,
+    confusion_matrix,
+    f1_score,
+    matthews_corrcoef,
     precision_score,
     recall_score,
-    f1_score,
-    confusion_matrix,
-    matthews_corrcoef,
+    roc_auc_score,
 )
+from sklearn.model_selection import LeaveOneOut, StratifiedKFold, train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import MaxAbsScaler, RobustScaler, StandardScaler
 
-# sklearn models
-from sklearn.linear_model import LogisticRegression
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
 from sklearn.ensemble import (
-    RandomForestClassifier,
     ExtraTreesClassifier,
     GradientBoostingClassifier,
     HistGradientBoostingClassifier,
+    RandomForestClassifier,
 )
+from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 
-# optional: imblearn
+# -------------------------
+# Optional imblearn
+# -------------------------
 try:
     from imblearn.pipeline import Pipeline as ImbPipeline  # type: ignore
     from imblearn.over_sampling import SMOTE  # type: ignore
@@ -62,13 +65,14 @@ except Exception:
     SMOTEENN = None
     RandomUnderSampler = None
 
-# optional: xgboost / lightgbm
+
 def _optional_import_xgb():
     try:
         from xgboost import XGBClassifier  # type: ignore
         return XGBClassifier
     except Exception:
         return None
+
 
 def _optional_import_lgbm():
     try:
@@ -79,22 +83,25 @@ def _optional_import_lgbm():
 
 
 # -------------------------
-# Helpers: filesystem
+# Utils
 # -------------------------
 def ensure_dir(p: Path) -> None:
     p.mkdir(parents=True, exist_ok=True)
 
+
 def now_run_id() -> str:
     return datetime.now().strftime("%Y%m%d_%H%M%S")
+
 
 def json_dumps_safe(x: Any) -> str:
     return json.dumps(x, sort_keys=True, default=str)
 
-# -------------------------
-# Helpers: grids
-# -------------------------
+
 def expand_param_grid(grid: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """Expand a dict of lists into list of dict combinations."""
+    """
+    Expand a param_grid dict into a list of dicts.
+    Accepts values as list or scalar.
+    """
     if not grid:
         return [{}]
     keys = list(grid.keys())
@@ -102,13 +109,17 @@ def expand_param_grid(grid: Dict[str, Any]) -> List[Dict[str, Any]]:
     for k in keys:
         v = grid[k]
         values.append(v if isinstance(v, list) else [v])
-    combos: List[Dict[str, Any]] = []
-    for vals in product(*values):
-        combos.append({keys[i]: vals[i] for i in range(len(keys))})
-    return combos
+    return [{keys[i]: vals[i] for i in range(len(keys))} for vals in product(*values)]
+
+
+def shard_indices(n_items: int, task_id: int, n_tasks: int) -> np.ndarray:
+    """Deterministic sharding: indices where idx % n_tasks == task_id."""
+    idx = np.arange(n_items)
+    return idx[idx % n_tasks == task_id]
+
 
 # -------------------------
-# Preprocessing builders
+# Preprocessing
 # -------------------------
 def build_scaler(name: str):
     if name == "none":
@@ -121,12 +132,13 @@ def build_scaler(name: str):
         return MaxAbsScaler()
     raise ValueError(f"Unknown scaler: {name}")
 
+
 def build_pca(params: Dict[str, Any]) -> PCA:
-    # n_components can be float (variance) or int
     return PCA(**params)
 
+
 # -------------------------
-# Resampling builders
+# Resampling
 # -------------------------
 def build_resampler(strategy: str, params: Dict[str, Any], seed: int):
     if strategy == "none":
@@ -135,24 +147,22 @@ def build_resampler(strategy: str, params: Dict[str, Any], seed: int):
         raise RuntimeError("imblearn not available")
 
     if strategy == "undersample":
-        # RandomUnderSampler supports sampling_strategy, replacement, random_state
         return RandomUnderSampler(random_state=seed, **params)
 
     if strategy == "smote":
         return SMOTE(random_state=seed, **params)
 
     if strategy == "smoteenn":
-        # config uses smote_k_neighbors alias
         smote_k = params.get("smote_k_neighbors", 5)
         sampling_strategy = params.get("sampling_strategy", 1.0)
         sm = SMOTE(random_state=seed, k_neighbors=smote_k, sampling_strategy=sampling_strategy)
-        # SMOTEENN signature varies slightly; keep it safe
         return SMOTEENN(random_state=seed, smote=sm)
 
     raise ValueError(f"Unknown resampling strategy: {strategy}")
 
+
 # -------------------------
-# Model builders
+# Models
 # -------------------------
 MODEL_REGISTRY = {
     "LogisticRegression": LogisticRegression,
@@ -167,27 +177,58 @@ MODEL_REGISTRY = {
     "GaussianNB": GaussianNB,
 }
 
-def build_estimator(model_key: str, model_cfg: Dict[str, Any], params: Dict[str, Any], seed: int) -> Optional[BaseEstimator]:
-    # Determine class name (some keys like SVC_linear map to SVC)
+
+def _override_n_jobs_if_possible(params: Dict[str, Any], n_jobs_model: Optional[int]) -> Dict[str, Any]:
+    if n_jobs_model is None:
+        return params
+    if "n_jobs" in params:
+        params["n_jobs"] = int(n_jobs_model)
+    return params
+
+
+def build_estimator(
+    model_key: str,
+    model_cfg: Dict[str, Any],
+    params: Dict[str, Any],
+    seed: int,
+    n_jobs_model: Optional[int] = None,
+) -> Optional[BaseEstimator]:
+    """
+    Build estimator from config entry.
+    Supports sklearn models + optional XGB/LGBM if installed.
+
+    IMPORTANT:
+    - Forces n_jobs if supported to avoid oversubscription.
+    - Sets random_state when supported.
+    """
     class_name = model_cfg.get("class_name", model_key)
 
-    # Optional models
+    # Optional XGB/LGBM
     if class_name == "XGBClassifier":
         XGB = _optional_import_xgb()
         if XGB is None:
             return None
-        # Ensure deterministic seed
-        if "random_state" not in params:
-            params["random_state"] = seed
-        return XGB(**{**model_cfg.get("init_params", {}), **params})
+        params = _override_n_jobs_if_possible(params, n_jobs_model)
+        params.setdefault("random_state", seed)
+        init_params = dict(model_cfg.get("init_params", {}))
+        if n_jobs_model is not None:
+            init_params["n_jobs"] = int(n_jobs_model)
+        elif init_params.get("n_jobs", None) == -1:
+            init_params["n_jobs"] = 1
+        return XGB(**{**init_params, **params})
 
     if class_name == "LGBMClassifier":
         LGBM = _optional_import_lgbm()
         if LGBM is None:
             return None
-        if "random_state" not in params:
-            params["random_state"] = seed
-        return LGBM(**{**model_cfg.get("init_params", {}), **params})
+        params = _override_n_jobs_if_possible(params, n_jobs_model)
+        params.setdefault("random_state", seed)
+        init_params = dict(model_cfg.get("init_params", {}))
+        if n_jobs_model is not None:
+            init_params["n_jobs"] = int(n_jobs_model)
+        elif init_params.get("n_jobs", None) == -1:
+            init_params["n_jobs"] = 1
+        return LGBM(**{**init_params, **params})
 
     if class_name not in MODEL_REGISTRY:
         raise ValueError(f"Unknown/unsupported model class_name={class_name} for key={model_key}")
@@ -195,11 +236,26 @@ def build_estimator(model_key: str, model_cfg: Dict[str, Any], params: Dict[str,
     cls = MODEL_REGISTRY[class_name]
     init_params = dict(model_cfg.get("init_params", {}))
 
-    # Set random_state if supported
-    if "random_state" in cls().get_params().keys():
+    # random_state if supported
+    try:
+        base_params = cls().get_params()
+    except Exception:
+        base_params = {}
+
+    if "random_state" in base_params:
         init_params.setdefault("random_state", seed)
 
+    # n_jobs if supported (HARD FIX against n_jobs=-1)
+    if "n_jobs" in base_params:
+        if n_jobs_model is not None:
+            init_params["n_jobs"] = int(n_jobs_model)
+        else:
+            if init_params.get("n_jobs", None) == -1:
+                init_params["n_jobs"] = 1
+
+    params = _override_n_jobs_if_possible(params, n_jobs_model)
     return cls(**{**init_params, **params})
+
 
 # -------------------------
 # Metrics
@@ -212,43 +268,37 @@ def prob_from_estimator(est: Any, X: pd.DataFrame) -> np.ndarray:
         return 1.0 / (1.0 + np.exp(-scores))
     raise ValueError("Estimator lacks predict_proba and decision_function")
 
+
 def compute_metrics(y_true: np.ndarray, y_prob: np.ndarray, thr: float) -> Dict[str, Any]:
     y_pred = (y_prob >= thr).astype(int)
-
     out: Dict[str, Any] = {}
 
-    # AUC / PR-AUC undefined if only one class present in y_true
     if len(np.unique(y_true)) > 1:
         out["roc_auc"] = roc_auc_score(y_true, y_prob)
         out["pr_auc"] = average_precision_score(y_true, y_prob)
+        out["mcc"] = matthews_corrcoef(y_true, y_pred)
     else:
         out["roc_auc"] = np.nan
         out["pr_auc"] = np.nan
-
-    out["brier"] = brier_score_loss(y_true, y_prob)
-
-    # MCC undefined / unstable with single-class y_true; keep nan for consistency
-    if len(np.unique(y_true)) > 1:
-        out["mcc"] = matthews_corrcoef(y_true, y_pred)
-    else:
         out["mcc"] = np.nan
 
+    out["brier"] = brier_score_loss(y_true, y_prob)
     out["accuracy"] = accuracy_score(y_true, y_pred)
     out["balanced_accuracy"] = balanced_accuracy_score(y_true, y_pred)
     out["precision"] = precision_score(y_true, y_pred, zero_division=0)
     out["recall"] = recall_score(y_true, y_pred, zero_division=0)
     out["f1"] = f1_score(y_true, y_pred, zero_division=0)
 
-    # IMPORTANT: force 2x2 confusion matrix even if only one class present
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
     out["tn"] = int(tn)
     out["fp"] = int(fp)
     out["fn"] = int(fn)
     out["tp"] = int(tp)
-
     return out
+
+
 # -------------------------
-# Validation iterators
+# Validation
 # -------------------------
 def iter_splits(
     X: pd.DataFrame,
@@ -295,8 +345,9 @@ def iter_splits(
 
     raise ValueError(f"Unknown validation strategy: {strategy_name}")
 
+
 # -------------------------
-# Main runner
+# Combo specification
 # -------------------------
 @dataclass
 class Combo:
@@ -313,15 +364,61 @@ class Combo:
     val_params: Dict[str, Any]
     seed: Optional[int]
 
+
+# -------------------------
+# Streaming parquet writer
+# -------------------------
+class ParquetAppender:
+    """
+    Append rows to Parquet efficiently by writing multiple part files.
+
+    This avoids reading the entire existing parquet for "append".
+    At the end you can concatenate all parts.
+    """
+    def __init__(self, outdir: Path, prefix: str, task_id: int):
+        self.outdir = outdir
+        self.prefix = prefix
+        self.task_id = task_id
+        self.part_idx = 0
+        ensure_dir(outdir)
+
+    def write_part(self, rows: List[Dict[str, Any]]) -> Optional[Path]:
+        if not rows:
+            return None
+        df = pd.DataFrame(rows)
+        out = self.outdir / f"{self.prefix}_task{self.task_id:04d}_part{self.part_idx:04d}.parquet"
+        df.to_parquet(out, index=False)  # requires pyarrow or fastparquet
+        self.part_idx += 1
+        return out
+
+
+# -------------------------
+# Main
+# -------------------------
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--data", required=True, help="CSV dataset path (STRICT complete-case recommended).")
+    ap = argparse.ArgumentParser(description="Parallelizable grid exploration with SLURM array sharding.")
+
+    ap.add_argument("--data", required=True, help="CSV dataset path.")
     ap.add_argument("--config", required=True, help="JSON config path.")
-    ap.add_argument("--outdir", required=True, help="Output directory.")
-    ap.add_argument("--target", default=None, help="Override target column.")
-    ap.add_argument("--predictors", default=None, help="Comma-separated predictors. If omitted, infer numeric cols minus target.")
-    ap.add_argument("--id-cols", default="row_id,_sheet,LocalID", help="Comma-separated id cols to ignore for predictors inference.")
-    ap.add_argument("--limit-combos", type=int, default=None, help="Debug: limit number of combos.")
+    ap.add_argument("--outdir", required=True, help="Output directory root.")
+    ap.add_argument("--target", default=None, help="Override target column (else config or default MSPH).")
+    ap.add_argument("--predictors", default=None, help="Comma-separated predictors list; else infer numeric cols.")
+    ap.add_argument("--id-cols", default="row_id,_sheet,LocalID", help="Comma-separated ID columns to exclude.")
+    ap.add_argument("--limit-combos", type=int, default=None, help="Limit number of combos (debug).")
+
+    # Sharding (SLURM array)
+    ap.add_argument("--task-id", type=int, default=0, help="0-based shard id (SLURM_ARRAY_TASK_ID).")
+    ap.add_argument("--n-tasks", type=int, default=1, help="Total shards (SLURM_ARRAY_TASK_COUNT).")
+
+    # Execution controls
+    ap.add_argument("--n-jobs-model", type=int, default=1, help="Force n_jobs for models (prevents oversubscription).")
+    ap.add_argument("--only-validation", default=None, help="Run only one validation strategy (e.g., kfold, loo).")
+    ap.add_argument("--store-fold-predictions", action="store_true", help="Store fold predictions (can be huge).")
+
+    # streaming / memory
+    ap.add_argument("--write-every", type=int, default=2000, help="Flush buffers every N metric rows.")
+    ap.add_argument("--pred-write-every", type=int, default=5000, help="Flush prediction rows every N rows.")
+
     args = ap.parse_args()
 
     run_id = now_run_id()
@@ -331,44 +428,48 @@ def main():
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
     df = pd.read_csv(args.data)
 
-    # Target + predictors
+    # ---- target/predictors ----
     target = args.target or cfg.get("target", "MSPH")
     id_cols = [c.strip() for c in args.id_cols.split(",") if c.strip()]
 
     if args.predictors:
         predictors = [c.strip() for c in args.predictors.split(",") if c.strip()]
     else:
-        # infer numeric predictors
         numeric_cols = [c for c in df.columns if pd.api.types.is_numeric_dtype(df[c])]
         predictors = [c for c in numeric_cols if c not in id_cols and c != target]
 
-    # ensure types
+    # cast
     df = df.copy()
-    df[target] = pd.to_numeric(df[target], errors="coerce").astype(int)
+    df[target] = pd.to_numeric(df[target], errors="coerce").astype("Int64")
     for c in predictors:
         df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    # drop rows with missing target or non-binary
     df = df[df[target].isin([0, 1])].reset_index(drop=True)
+    df[target] = df[target].astype(int)
 
     X = df[predictors]
     y = df[target].to_numpy()
 
-    # --- build grids from config ---
-    # models
-    model_entries = []
+    print(f"[INFO] data={Path(args.data).name} shape={df.shape} pos_rate={y.mean():.3f}")
+    print(f"[INFO] predictors={len(predictors)} target={target}")
+    print(f"[INFO] task={args.task_id}/{args.n_tasks} n_jobs_model={args.n_jobs_model} store_preds={args.store_fold_predictions}")
+    print(f"[INFO] imblearn_available={IMBLEARN_AVAILABLE}")
+
+    # ---- build model entries ----
+    model_entries: List[Tuple[str, str, Dict[str, Any], Dict[str, Any]]] = []
     for model_key, model_cfg in cfg.get("models", {}).items():
         if not model_cfg.get("enabled", True):
             continue
         class_name = model_cfg.get("class_name", model_key)
-        model_grid = expand_param_grid(model_cfg.get("param_grid", {}))
-        for mp in model_grid:
+        grid = expand_param_grid(model_cfg.get("param_grid", {}))
+        for mp in grid:
             model_entries.append((model_key, class_name, model_cfg, mp))
 
-    # preprocessing
+    # ---- preprocessing grids ----
     prep = cfg.get("preprocessing", {})
     imp_strats = prep.get("imputation", {}).get("strategies", [{"name": "none"}])
     sc_strats = prep.get("scaling", {}).get("strategies", [{"name": "none"}])
+
     pca_block = prep.get("pca", {})
     pca_strats = pca_block.get("strategies", [{"name": "off"}])
     pca_constraints = pca_block.get("constraints", {})
@@ -377,82 +478,74 @@ def main():
     pca_forbidden_models = set(pca_constraints.get("do_not_apply_for_models", []))
     pca_behavior = pca_constraints.get("behavior_on_forbidden", "skip")
 
-    # resampling
+    # ---- resampling ----
     res_block = cfg.get("resampling", {})
     res_strats = res_block.get("strategies", [{"name": "none"}])
     res_constraints = res_block.get("constraints", {})
     res_on_failure = res_constraints.get("on_failure", "fallback_to_none")
 
-    # validation
+    # ---- validation ----
     val = cfg.get("validation", {})
     val_strats = val.get("strategies", [])
+    if args.only_validation is not None:
+        val_strats = [v for v in val_strats if v.get("name") == args.only_validation]
+        if not val_strats:
+            raise ValueError(f"--only-validation={args.only_validation} not found in config validation.strategies")
+
     seed_grid = val.get("seed_grid", {})
     seeds = seed_grid.get("seeds", [])
-    if not seeds and seed_grid.get("enabled", False):
-        raise ValueError("seed_grid.seeds is empty; please fill it with your fixed 100 seeds.")
+    if seed_grid.get("enabled", False) and not seeds:
+        raise ValueError("seed_grid.enabled=true but seed_grid.seeds is empty")
 
     reporting = val.get("reporting", {})
     thresholds = reporting.get("thresholds", {}).get("values", [0.5])
-    store_preds = bool(reporting.get("store_fold_predictions", True))
-    metrics_list = reporting.get("metrics", [])
 
-    # --- build combinations ---
+    # ---- build combos ----
     combos: List[Combo] = []
     for (model_key, model_class, model_cfg, model_params) in model_entries:
         for imp in imp_strats:
             imp_name = imp["name"]
             for sc in sc_strats:
                 sc_name = sc["name"]
-
                 for pca_s in pca_strats:
                     pca_name = pca_s["name"]
                     pca_param_grid = expand_param_grid(pca_s.get("params_grid", {})) if pca_name == "on" else [{}]
-
                     for pca_params in pca_param_grid:
-                        # PCA constraints
                         if pca_name == "on":
                             if pca_apply_only_if_scaled and sc_name == "none":
                                 continue
                             if pca_apply_only_if_scaled and sc_name not in pca_scalers_allowed:
                                 continue
-                            # forbidden models (by class)
-                            if model_class in pca_forbidden_models:
-                                if pca_behavior == "skip":
-                                    continue
-                                # else force off (not implemented here)
-                        # if pca off, ok always
+                            if model_class in pca_forbidden_models and pca_behavior == "skip":
+                                continue
 
                         for res in res_strats:
                             res_name = res["name"]
                             res_param_grid = expand_param_grid(res.get("params_grid", {})) if res_name != "none" else [{}]
-
                             for res_params in res_param_grid:
-                                # if imblearn not installed, skip non-none resampling
                                 if res_name != "none" and not IMBLEARN_AVAILABLE:
                                     continue
 
                                 for vs in val_strats:
                                     vs_name = vs["name"]
                                     vs_param_grid = expand_param_grid(vs.get("params_grid", {}))
-
                                     use_seed_grid = bool(vs.get("use_seed_grid", False))
                                     seed_list: List[Optional[int]] = seeds if use_seed_grid else [None]
-
                                     for vs_params in vs_param_grid:
                                         for seed in seed_list:
                                             combos.append(
                                                 Combo(
                                                     model_key=model_key,
                                                     model_class=model_class,
-                                                    model_params=model_params,
+                                                    model_params=dict(model_params),
                                                     imputer=imp_name,
                                                     scaler=sc_name,
                                                     pca=pca_name,
-                                                    pca_params=pca_params,
+                                                    pca_params=dict(pca_params),
                                                     resampling=res_name,
-                                                    resampling_params=res_params,
+                                                    resampling_params=dict(res_params),
                                                     val_strategy=vs_name,
-                                                    val_params=vs_params,
+                                                    val_params=dict(vs_params),
                                                     seed=int(seed) if seed is not None else None,
                                                 )
                                             )
@@ -460,102 +553,111 @@ def main():
     if args.limit_combos is not None:
         combos = combos[: args.limit_combos]
 
-    print(f"[INFO] Dataset shape: {df.shape} | pos_rate={y.mean():.3f}")
-    print(f"[INFO] Predictors: {len(predictors)}")
-    print(f"[INFO] Total combos: {len(combos)}")
-    print(f"[INFO] imblearn available: {IMBLEARN_AVAILABLE}")
+    all_n = len(combos)
+    shard_idx = shard_indices(all_n, args.task_id, args.n_tasks)
+    combos_shard = [combos[i] for i in shard_idx.tolist()]
 
-    # --- run ---
-    results_rows: List[Dict[str, Any]] = []
-    pred_rows: List[Dict[str, Any]] = []
+    print(f"[INFO] total_combos={all_n} shard_size={len(combos_shard)} (task {args.task_id}/{args.n_tasks})")
 
-    for i, combo in enumerate(combos, start=1):
-        # Build estimator
-        est = build_estimator(combo.model_key, cfg["models"][combo.model_key], dict(combo.model_params), seed=combo.seed or 42)
+    # ---- streaming writers ----
+    results_writer = ParquetAppender(outdir, "results", args.task_id)
+    preds_writer = ParquetAppender(outdir, "preds", args.task_id)
+
+    results_buf: List[Dict[str, Any]] = []
+    preds_buf: List[Dict[str, Any]] = []
+
+    def flush_results():
+        nonlocal results_buf
+        p = results_writer.write_part(results_buf)
+        results_buf = []
+        if p is not None:
+            print(f"[WRITE] {p.name}")
+
+    def flush_preds():
+        nonlocal preds_buf
+        p = preds_writer.write_part(preds_buf)
+        preds_buf = []
+        if p is not None:
+            print(f"[WRITE] {p.name}")
+
+    # ---- run combos ----
+    for local_i, combo in enumerate(combos_shard, start=1):
+        global_combo_id = int(shard_idx[local_i - 1]) + 1  # 1-based id (stable)
+
+        est = build_estimator(
+            combo.model_key,
+            cfg["models"][combo.model_key],
+            dict(combo.model_params),
+            seed=combo.seed or 42,
+            n_jobs_model=args.n_jobs_model,
+        )
         if est is None:
-            # optional model not installed
             continue
 
-        # Build preprocessing steps
-        steps: List[Tuple[str, Any]] = []
+        # preprocessing steps
+        base_steps: List[Tuple[str, Any]] = []
+        if combo.imputer != "none":
+            base_steps.append(("imputer", SimpleImputer(strategy="median")))
 
-        # Imputation
-        use_imputer = (combo.imputer != "none")
-        if use_imputer:
-            steps.append(("imputer", SimpleImputer(strategy="median")))
+        sc_obj = build_scaler(combo.scaler)
+        if sc_obj is not None:
+            base_steps.append(("scaler", sc_obj))
 
-        # Scaling
-        scaler_obj = build_scaler(combo.scaler)
-        if scaler_obj is not None:
-            steps.append(("scaler", scaler_obj))
-
-        # PCA
         if combo.pca == "on":
-            steps.append(("pca", build_pca(combo.pca_params)))
+            base_steps.append(("pca", build_pca(combo.pca_params)))
 
-        # Resampling
         use_resampling = (combo.resampling != "none")
-        resampler_obj = None
+        PipelineClass = Pipeline if not use_resampling else ImbPipeline  # type: ignore
 
-        # Pipeline class
-        PipelineClass = Pipeline
-
-        if use_resampling:
-            if not IMBLEARN_AVAILABLE:
-                continue
-            PipelineClass = ImbPipeline  # type: ignore
-
-        # Validation splits
-        # for train_test_split strategies, the "params_grid" carries stratify bool, but we map to correct iterator name
-        vs_name = combo.val_strategy
-        vs_params = dict(combo.val_params)
-
-        # iterate splits
         try:
-            split_iter = iter_splits(X, y, vs_name, vs_params, combo.seed)
+            split_iter = iter_splits(X, y, combo.val_strategy, dict(combo.val_params), combo.seed)
         except Exception as e:
-            print(f"[WARN] split iterator failed for combo {i}: {e}")
+            print(f"[WARN] split iterator failed combo_id={global_combo_id}: {e}")
             continue
 
         split_count = 0
         for train_idx, test_idx, split_id in split_iter:
             split_count += 1
+
             X_train = X.iloc[train_idx].copy()
             y_train = y[train_idx]
             X_test = X.iloc[test_idx].copy()
             y_test = y[test_idx]
 
-            # Build resampler (train-only; inside pipeline fit)
+            resampler_obj = None
             if use_resampling:
                 try:
-                    resampler_obj = build_resampler(combo.resampling, combo.resampling_params, seed=(combo.seed or 42) + split_count)
-                except Exception as e:
+                    resampler_obj = build_resampler(
+                        combo.resampling,
+                        combo.resampling_params,
+                        seed=(combo.seed or 42) + split_count,
+                    )
+                except Exception:
                     if res_on_failure == "fallback_to_none":
                         resampler_obj = None
                         PipelineClass = Pipeline
                     else:
-                        # skip
                         continue
 
-            # Build pipeline steps final
-            steps_final = list(steps)
+            # clone estimator per split
+            est_split = clone(est)
+
+            steps_final = list(base_steps)
             if resampler_obj is not None:
                 steps_final.append(("resample", resampler_obj))
-            steps_final.append(("model", est))
+            steps_final.append(("model", est_split))
 
             pipe = PipelineClass(steps_final)  # type: ignore
 
-            # Fit / predict
             try:
                 pipe.fit(X_train, y_train)
                 y_prob = prob_from_estimator(pipe, X_test)
-            except Exception as e:
-                # fallback for resampling failure
+            except Exception:
+                # fallback without resampling if allowed
                 if use_resampling and res_on_failure == "fallback_to_none":
                     try:
-                        # rebuild without resampling
-                        steps_fb = list(steps) + [("model", est)]
-                        pipe_fb = Pipeline(steps_fb)
+                        est_fb = clone(est)
+                        pipe_fb = Pipeline(list(base_steps) + [("model", est_fb)])
                         pipe_fb.fit(X_train, y_train)
                         y_prob = prob_from_estimator(pipe_fb, X_test)
                     except Exception:
@@ -563,12 +665,12 @@ def main():
                 else:
                     continue
 
+            # metrics per threshold
             for thr in thresholds:
                 m = compute_metrics(y_test, y_prob, thr=float(thr))
-
                 row = {
                     "run_id": run_id,
-                    "combo_id": i,
+                    "combo_id": global_combo_id,
                     "split_id": split_id,
                     "threshold": float(thr),
                     "val_strategy": combo.val_strategy,
@@ -588,83 +690,69 @@ def main():
                     "pos_rate_test": float(np.mean(y_test)),
                 }
                 row.update(m)
-                results_rows.append(row)
+                results_buf.append(row)
 
-            if store_preds:
+            # optional predictions
+            if args.store_fold_predictions:
                 for j in range(len(test_idx)):
-                    pred_rows.append({
-                        "run_id": run_id,
-                        "combo_id": i,
-                        "split_id": split_id,
-                        "seed": combo.seed,
-                        "val_strategy": combo.val_strategy,
-                        "model_key": combo.model_key,
-                        "imputer": combo.imputer,
-                        "scaler": combo.scaler,
-                        "pca": combo.pca,
-                        "resampling": combo.resampling,
-                        "y_true": int(y_test[j]),
-                        "y_prob": float(y_prob[j]),
-                    })
+                    preds_buf.append(
+                        {
+                            "run_id": run_id,
+                            "combo_id": global_combo_id,
+                            "split_id": split_id,
+                            "seed": combo.seed,
+                            "val_strategy": combo.val_strategy,
+                            "model_key": combo.model_key,
+                            "imputer": combo.imputer,
+                            "scaler": combo.scaler,
+                            "pca": combo.pca,
+                            "resampling": combo.resampling,
+                            "y_true": int(y_test[j]),
+                            "y_prob": float(y_prob[j]),
+                        }
+                    )
 
-        if i % 50 == 0:
-            print(f"[INFO] processed combos: {i}/{len(combos)} | rows={len(results_rows)}")
+            # flush buffers
+            if len(results_buf) >= args.write_every:
+                flush_results()
+            if args.store_fold_predictions and len(preds_buf) >= args.pred_write_every:
+                flush_preds()
 
-    # --- export ---
-    results_df = pd.DataFrame(results_rows)
-    results_path = outdir / "results.csv"
-    results_df.to_csv(results_path, index=False)
+        # combo cleanup
+        gc.collect()
 
-    # summary
-    group_cols = [
-        "model_key", "model_class", "model_params",
-        "imputer", "scaler", "pca", "pca_params",
-        "resampling", "resampling_params",
-        "val_strategy", "val_params", "threshold"
-    ]
+        if local_i % 10 == 0:
+            print(f"[INFO] task={args.task_id} processed {local_i}/{len(combos_shard)} combos")
 
-    agg_map = {m: ["mean", "std", "median"] for m in ["roc_auc", "pr_auc", "brier", "mcc", "balanced_accuracy", "f1"]}
-    summary_df = results_df.groupby(group_cols).agg(agg_map).reset_index()
-    # flatten columns
-    summary_df.columns = ["__".join(c).strip("__") if isinstance(c, tuple) else c for c in summary_df.columns]
+    # final flush
+    flush_results()
+    if args.store_fold_predictions:
+        flush_preds()
 
-    summary_path = outdir / "summary.csv"
-    summary_df.to_csv(summary_path, index=False)
-
-    # predictions
-    if store_preds and pred_rows:
-        pred_df = pd.DataFrame(pred_rows)
-        pred_path = outdir / "predictions.parquet"
-        pred_df.to_parquet(pred_path, index=False)
-
-    # run metadata
+    # metadata per task
     meta = {
         "run_id": run_id,
         "timestamp": datetime.now().isoformat(),
         "python": sys.version,
         "platform": platform.platform(),
-        "imblearn_available": IMBLEARN_AVAILABLE,
+        "task_id": args.task_id,
+        "n_tasks": args.n_tasks,
+        "n_jobs_model": args.n_jobs_model,
+        "store_fold_predictions": bool(args.store_fold_predictions),
         "data_path": str(Path(args.data).resolve()),
         "config_path": str(Path(args.config).resolve()),
         "n_rows": int(len(df)),
         "pos_rate": float(np.mean(y)),
         "target": target,
-        "predictors": predictors,
-        "n_combos_attempted": int(len(combos)),
-        "n_result_rows": int(len(results_df)),
-        "outputs": {
-            "results_csv": str(results_path),
-            "summary_csv": str(summary_path),
-            "predictions_parquet": str((outdir / "predictions.parquet")) if (store_preds and pred_rows) else None
-        }
+        "n_predictors": int(len(predictors)),
+        "only_validation": args.only_validation,
+        "n_combos_total": int(all_n),
+        "n_combos_shard": int(len(combos_shard)),
+        "outputs": {"outdir": str(outdir)},
     }
-    (outdir / "run_metadata.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    (outdir / f"run_metadata_task{args.task_id:04d}.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
-    print(f"[DONE] results: {results_path}")
-    print(f"[DONE] summary: {summary_path}")
-    if store_preds and pred_rows:
-        print(f"[DONE] predictions: {outdir / 'predictions.parquet'}")
-    print(f"[DONE] metadata: {outdir / 'run_metadata.json'}")
+    print(f"[DONE] task={args.task_id} finished. outdir={outdir}")
 
 
 if __name__ == "__main__":
