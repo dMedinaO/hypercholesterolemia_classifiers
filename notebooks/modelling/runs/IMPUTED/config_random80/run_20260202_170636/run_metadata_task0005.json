@@ -1,0 +1,22 @@
+{
+  "run_id": "20260202_170636",
+  "timestamp": "2026-02-02T18:02:52.386156",
+  "python": "3.12.3 | packaged by conda-forge | (main, Apr 15 2024, 18:38:13) [GCC 12.3.0]",
+  "platform": "Linux-4.18.0-553.72.1.el8_10.x86_64-x86_64-with-glibc2.28",
+  "task_id": 5,
+  "n_tasks": 20,
+  "n_jobs_model": 4,
+  "store_fold_predictions": false,
+  "data_path": "/home/dmedina/hypercholesterolemia_classifiers/data/processed_variants/hcs_imputed_exploratory_20260129_114259.csv",
+  "config_path": "/home/dmedina/hypercholesterolemia_classifiers/configs/variants/config_random80.json",
+  "n_rows": 160,
+  "pos_rate": 0.275,
+  "target": "MSPH",
+  "n_predictors": 11,
+  "only_validation": null,
+  "n_combos_total": 255860,
+  "n_combos_shard": 12793,
+  "outputs": {
+    "outdir": "/home/dmedina/hypercholesterolemia_classifiers/notebooks/modelling/runs/IMPUTED/config_random80/run_20260202_170636"
+  }
+}

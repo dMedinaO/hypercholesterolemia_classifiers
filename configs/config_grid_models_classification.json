@@ -29,18 +29,6 @@
       "notes": "LDA with solver=svd. shrinkage is not supported with svd."
     },
 
-    "LinearDiscriminantAnalysis_lsqr_shrink": {
-      "enabled": true,
-      "backend": "sklearn",
-      "class_name": "LinearDiscriminantAnalysis",
-      "init_params": {},
-      "param_grid": {
-        "solver": ["lsqr"],
-        "shrinkage": [null, "auto"]
-      },
-      "notes": "LDA with solver=lsqr; shrinkage supported (useful in low-N)."
-    },
-
     "QuadraticDiscriminantAnalysis": {
       "enabled": true,
       "init_params": {},
@@ -76,22 +64,6 @@
       "notes": "Margin-based baseline; probability=True for probability outputs (still assess calibration)."
     },
 
-    "SVC_rbf": {
-      "enabled": true,
-      "backend": "sklearn",
-      "class_name": "SVC",
-      "init_params": {
-        "kernel": "rbf",
-        "probability": true
-      },
-      "param_grid": {
-        "C": [0.1, 1.0, 10.0],
-        "gamma": ["scale", "auto"],
-        "class_weight": [null, "balanced"]
-      },
-      "notes": "Non-linear SVM; keep grid small to reduce overfitting risk."
-    },
-
     "RandomForestClassifier": {
       "enabled": true,
       "init_params": {
@@ -105,45 +77,6 @@
         "class_weight": [null, "balanced"]
       },
       "notes": "Tree ensemble baseline; scaling not required."
-    },
-
-    "ExtraTreesClassifier": {
-      "enabled": true,
-      "init_params": {
-        "n_estimators": 500,
-        "n_jobs": -1
-      },
-      "param_grid": {
-        "max_depth": [null, 3, 5, 10],
-        "min_samples_leaf": [1, 2, 5],
-        "max_features": ["sqrt", 0.5, 1.0],
-        "class_weight": [null, "balanced"]
-      },
-      "notes": "High-variance model; useful to compare vs RF."
-    },
-
-    "GradientBoostingClassifier": {
-      "enabled": true,
-      "init_params": {},
-      "param_grid": {
-        "n_estimators": [200, 400],
-        "learning_rate": [0.03, 0.1],
-        "max_depth": [2, 3],
-        "subsample": [1.0]
-      },
-      "notes": "Classic boosting (no class_weight). Use resampling strategies later if needed."
-    },
-
-    "HistGradientBoostingClassifier": {
-      "enabled": true,
-      "init_params": {},
-      "param_grid": {
-        "max_depth": [2, 3, 5],
-        "learning_rate": [0.03, 0.1],
-        "max_iter": [200, 400],
-        "l2_regularization": [0.0, 0.1]
-      },
-      "notes": "Fast boosting with regularization; good low-N stress test."
     },
 
     "GaussianNB": {
@@ -172,24 +105,6 @@
         "reg_lambda": [1.0, 5.0]
       },
       "notes": "Optional. Keep conservative to avoid overfitting and excessive tuning."
-    },
-
-    "LGBMClassifier": {
-      "enabled": false,
-      "backend": "lightgbm",
-      "init_params": {
-        "objective": "binary",
-        "n_jobs": -1
-      },
-      "param_grid": {
-        "n_estimators": [300, 600],
-        "num_leaves": [15, 31],
-        "learning_rate": [0.03, 0.1],
-        "subsample": [0.8, 1.0],
-        "colsample_bytree": [0.8, 1.0],
-        "reg_lambda": [0.0, 1.0]
-      },
-      "notes": "Optional. Conservative grid to keep comparisons fair."
     }
   },
 
@@ -265,9 +180,6 @@
         "scalers_allowed": ["standard", "robust", "maxabs"],
         "do_not_apply_for_models": [
           "RandomForestClassifier",
-          "ExtraTreesClassifier",
-          "GradientBoostingClassifier",
-          "HistGradientBoostingClassifier",
           "XGBClassifier",
           "LGBMClassifier"
         ],
@@ -331,15 +243,11 @@
 
     "seed_grid": {
       "enabled": true,
-      "n_seeds": 30,
+      "n_seeds": 10,
       "base_seed": 42,
       "seeds": [
         478163327, 1122456590, 198888238, 1648070629, 2013803541,
-        1130931295, 1092773876, 330267354, 624025999, 505971449,
-        189471860, 1956584712, 180971984, 1794556993, 1646993365,
-        1185818180, 2002859153, 1210909078, 722441195, 1239291411,
-        1309741490, 1095861064, 1193372385, 291055688, 1339447843,
-        399093796, 1707422099, 266442816, 343096468, 1403726111
+        1130931295, 1092773876, 330267354, 624025999, 505971449
       ],
       "notes": "Fixed list of 100 unique seeds stored in the config to ensure exact reproducibility."
     },
@@ -350,7 +258,7 @@
         "backend": "sklearn",
         "class_name": "StratifiedKFold",
         "params_grid": {
-          "n_splits": [5, 10],
+          "n_splits": [3, 5, 10],
           "shuffle": [true]
         },
         "use_seed_grid": true,
