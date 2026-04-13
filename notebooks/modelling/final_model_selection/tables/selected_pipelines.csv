@@ -1,0 +1,4 @@
+label,dataset_variant,config_name,model_class,scaler,resampling,pca,mean_mcc,std_mcc,count,generalization_score,complexity_score
+best_overall,STRICT,config_loo,LinearDiscriminantAnalysis,none,none,off,0.4862652153958905,0.0,2,0.4862652153958905,0
+best_strict,STRICT,config_loo,LinearDiscriminantAnalysis,none,none,off,0.4862652153958905,0.0,2,0.4862652153958905,0
+best_imputed,IMPUTED,config_loo,LogisticRegression,standard,smote,on,0.4981285682631651,0.024706249431130572,336,0.4734223188320345,3

@@ -1,0 +1,40 @@
+{
+  "selection": {
+    "label": "best_imputed",
+    "dataset_variant": "IMPUTED",
+    "config_name": "config_loo",
+    "model_class": "LogisticRegression",
+    "scaler": "standard",
+    "resampling": "smote",
+    "pca": "on",
+    "mean_mcc": 0.4981285682631651,
+    "std_mcc": 0.024706249431130572,
+    "count": 336,
+    "generalization_score": 0.4734223188320345,
+    "complexity_score": 3
+  },
+  "dataset_path": "/home/dmedina/Desktop/colabs/hypercholesterolemia_classifiers/data/processed_variants/hcs_imputed_exploratory_20260129_114259.csv",
+  "predictor_columns": [
+    "Age",
+    "Weight",
+    "Height",
+    "BMI_final",
+    "Glycemia",
+    "SBP_1T",
+    "DBP_1T",
+    "TC_1T",
+    "TG_1T",
+    "HDL_1T",
+    "LDL_1T"
+  ],
+  "target_column": "MSPH",
+  "n_train": 128,
+  "n_test": 32,
+  "random_state": 13,
+  "project_root": "/home/dmedina/Desktop/colabs/hypercholesterolemia_classifiers",
+  "notes": [
+    "Final export split is a fixed stratified 80/20 split for artifact generation.",
+    "Selection was based on robustness/generalization summary from results_seed_level.csv.",
+    "For config_loo, the final artifact export still uses a stratified 80/20 split."
+  ]
+}

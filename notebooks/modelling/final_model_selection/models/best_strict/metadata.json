@@ -1,0 +1,40 @@
+{
+  "selection": {
+    "label": "best_strict",
+    "dataset_variant": "STRICT",
+    "config_name": "config_loo",
+    "model_class": "LinearDiscriminantAnalysis",
+    "scaler": "none",
+    "resampling": "none",
+    "pca": "off",
+    "mean_mcc": 0.4862652153958905,
+    "std_mcc": 0.0,
+    "count": 2,
+    "generalization_score": 0.4862652153958905,
+    "complexity_score": 0
+  },
+  "dataset_path": "/home/dmedina/Desktop/colabs/hypercholesterolemia_classifiers/data/processed_variants/hcs_strict_complete_case_20260129_114259.csv",
+  "predictor_columns": [
+    "Age",
+    "Weight",
+    "Height",
+    "BMI_final",
+    "Glycemia",
+    "SBP_1T",
+    "DBP_1T",
+    "TC_1T",
+    "TG_1T",
+    "HDL_1T",
+    "LDL_1T"
+  ],
+  "target_column": "MSPH",
+  "n_train": 118,
+  "n_test": 30,
+  "random_state": 13,
+  "project_root": "/home/dmedina/Desktop/colabs/hypercholesterolemia_classifiers",
+  "notes": [
+    "Final export split is a fixed stratified 80/20 split for artifact generation.",
+    "Selection was based on robustness/generalization summary from results_seed_level.csv.",
+    "For config_loo, the final artifact export still uses a stratified 80/20 split."
+  ]
+}
