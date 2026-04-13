@@ -1,0 +1,8 @@
+scenario,feature,mean_abs_shap
+no_lipid,num__BMI_final,1.1365802877606523
+no_lipid,num__Weight,0.7893835157288732
+no_lipid,num__Age,0.3684487714287231
+no_lipid,num__Height,0.3574624209024557
+no_lipid,num__SBP_1T,0.33600603737067425
+no_lipid,num__Glycemia,0.06763941485134506
+no_lipid,num__DBP_1T,0.022772471691970546

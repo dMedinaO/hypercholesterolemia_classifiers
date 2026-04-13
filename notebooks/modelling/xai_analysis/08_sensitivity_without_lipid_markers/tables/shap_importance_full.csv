@@ -1,0 +1,12 @@
+scenario,feature,mean_abs_shap
+full,num__TC_1T,2.9197315875989647
+full,num__BMI_final,1.6619301895318033
+full,num__LDL_1T,1.3007702264679855
+full,num__Weight,1.2120279238168965
+full,num__TG_1T,0.7995534916816084
+full,num__HDL_1T,0.6144990015590234
+full,num__SBP_1T,0.5399306568080867
+full,num__Height,0.41057788694593955
+full,num__Glycemia,0.14820124438752894
+full,num__Age,0.102077634855076
+full,num__DBP_1T,0.03185892665219227
