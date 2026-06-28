@@ -1,0 +1,2 @@
+dataset_for_figure,label_col,n_samples,n_features_full,n_features_pruned,distribution_features,correlation_method,feature_set_for_corr,n_corr_features,feature_set_for_projection,n_projection_features,pca_explained_variance_pc1,pca_explained_variance_pc2,tsne_perplexity,random_state
+strict,MSPH,148,11,9,TC_1T;LDL_1T;TG_1T;HDL_1T,pearson,full,11,pruned,9,0.22512961080574076,0.19036012856181814,30,42
